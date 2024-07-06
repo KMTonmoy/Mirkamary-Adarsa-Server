@@ -19,7 +19,7 @@ app.use(
 app.use(express.json());
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const uri = "mongodb+srv://tonmoyahamed2009:Tonmoytoma22@cluster0.w5cwfw4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const uri = process.env.mongodbURI;
 
 const client = new MongoClient(uri, {
     serverApi: {
@@ -31,11 +31,13 @@ const client = new MongoClient(uri, {
 
 async function run() {
     try {
-        // await client.connect();
+        await client.connect();
         console.log("Connected to MongoDB");
 
         const usersCollection = client.db('Mirkamary_Adarsa_High_School').collection('users');
-
+        const announcementCollection = client.db('Mirkamary_Adarsa_High_School').collection('announcement');
+        const bannerCollection = client.db('Mirkamary_Adarsa_High_School').collection('banners');
+        const teacherCollection = client.db('Mirkamary_Adarsa_High_School').collection('teacher');
 
         app.post('/jwt', async (req, res) => {
             const user = req.body;
@@ -43,10 +45,9 @@ async function run() {
             res.send({ token });
         });
 
-
         app.get('/users', async (req, res) => {
             const users = await usersCollection.find().toArray();
-            res.send(users); 
+            res.send(users);
         });
 
         app.get('/users/:email', async (req, res) => {
@@ -58,12 +59,9 @@ async function run() {
         app.patch('/users/:email', async (req, res) => {
             const { email } = req.params;
             const { role } = req.body;
-
             const filter = { email: email };
             const updateDoc = {
-                $set: {
-                    role,
-                },
+                $set: { role }
             };
 
             try {
@@ -110,6 +108,92 @@ async function run() {
             res.send(result);
         });
 
+        app.get('/announcement', async (req, res) => {
+            const announcements = await announcementCollection.find().toArray();
+            res.send(announcements);
+        });
+
+        app.post('/announcement', async (req, res) => {
+            const announce = req.body;
+            const result = await announcementCollection.insertOne(announce);
+            res.send(result);
+        });
+
+        app.get('/banner', async (req, res) => {
+            const banners = await bannerCollection.find().toArray();
+            res.send(banners);
+        });
+
+        app.patch('/banners/:id', async (req, res) => {
+            const { id } = req.params;
+            const banner = req.body;
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    image: banner.image,
+                    title: banner.title,
+                    description: banner.description,
+                },
+            };
+            try {
+                const result = await bannerCollection.updateOne(filter, updateDoc);
+                if (result.matchedCount === 0) {
+                    return res.status(404).send({ message: 'Banner not found' });
+                }
+                res.send({ acknowledged: true });
+            } catch (error) {
+                console.error('Error updating Banner:', error);
+                res.status(500).send({ message: 'Failed to update Banner' });
+            }
+        });
+
+        app.post('/banner', async (req, res) => {
+            const banner = req.body;
+            const result = await bannerCollection.insertOne(banner);
+            res.send(result);
+        });
+
+        app.get('/teacher', async (req, res) => {
+            const teachers = await teacherCollection.find().toArray();
+            res.send(teachers);
+        });
+
+        app.patch('/teachers/:id', async (req, res) => {
+            const { id } = req.params;
+            const teacher = req.body;
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    name: teacher.name,
+                    role: teacher.role,
+                    image: teacher.image,
+                    details: teacher.details,
+                },
+            };
+            try {
+                const result = await teacherCollection.updateOne(filter, updateDoc);
+                if (result.matchedCount === 0) {
+                    return res.status(404).send({ message: 'Teacher not found' });
+                }
+                res.send({ acknowledged: true });
+            } catch (error) {
+                console.error('Error updating teacher:', error);
+                res.status(500).send({ message: 'Failed to update teacher' });
+            }
+        });
+
+        app.post('/teacher', async (req, res) => {
+            const teacher = req.body;
+            const result = await teacherCollection.insertOne(teacher);
+            res.send(result);
+        });
+
+        app.delete('/teacher/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await teacherCollection.deleteOne(query);
+            res.send({ deletedCount: result.deletedCount });
+        });
 
         app.get('/logout', async (req, res) => {
             try {
@@ -123,16 +207,18 @@ async function run() {
             }
         });
 
-
         app.listen(port, () => {
             console.log(`Server is running on port ${port}`);
         });
 
-    } finally {
-
         process.on('SIGINT', async () => {
-
+            await client.close();
+            console.log("MongoDB connection closed");
+            process.exit(0);
         });
+    } catch (error) {
+        console.error(error);
+        process.exit(1);
     }
 }
 
