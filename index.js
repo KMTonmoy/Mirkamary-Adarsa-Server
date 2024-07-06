@@ -3,6 +3,7 @@ const app = express();
 const cors = require('cors');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 8000;
 
 app.use(
@@ -18,7 +19,6 @@ app.use(
 
 app.use(express.json());
 
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = process.env.mongodbURI;
 
 const client = new MongoClient(uri, {
@@ -126,6 +126,9 @@ async function run() {
 
         app.patch('/banners/:id', async (req, res) => {
             const { id } = req.params;
+            if (!ObjectId.isValid(id)) {
+                return res.status(400).send({ message: 'Invalid Banner ID' });
+            }
             const banner = req.body;
             const filter = { _id: new ObjectId(id) };
             const updateDoc = {
@@ -160,6 +163,9 @@ async function run() {
 
         app.patch('/teachers/:id', async (req, res) => {
             const { id } = req.params;
+            if (!ObjectId.isValid(id)) {
+                return res.status(400).send({ message: 'Invalid Teacher ID' });
+            }
             const teacher = req.body;
             const filter = { _id: new ObjectId(id) };
             const updateDoc = {
@@ -190,9 +196,22 @@ async function run() {
 
         app.delete('/teacher/:id', async (req, res) => {
             const id = req.params.id;
+            if (!ObjectId.isValid(id)) {
+                return res.status(400).send({ message: 'Invalid Teacher ID' });
+            }
             const query = { _id: new ObjectId(id) };
             const result = await teacherCollection.deleteOne(query);
             res.send({ deletedCount: result.deletedCount });
+        });
+
+        app.get('/teacher/:id', async (req, res) => {
+            const id = req.params.id;
+            if (!ObjectId.isValid(id)) {
+                return res.status(400).send({ message: 'Invalid Teacher ID' });
+            }
+            const query = { _id: new ObjectId(id) };
+            const result = await teacherCollection.findOne(query);
+            res.send(result);
         });
 
         app.get('/logout', async (req, res) => {
